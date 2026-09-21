@@ -22,6 +22,7 @@
     <button class="tab" data-tab="voice">3 · Voiceover</button>
     <button class="tab" data-tab="style">4 · Captions &amp; Style</button>
     <button class="tab" data-tab="render">5 · Render &amp; Export</button>
+    <button class="tab" data-tab="queue">6 · Queue</button>
   </nav>
   <div id="proj-bar">
     <select id="project-sel" title="Project"></select>
@@ -46,6 +47,9 @@
           <option value="distance">The Distance Arc — past → present → future</option>
           <option value="explain">Explainer — what → why it matters → what's next</option>
           <option value="myth">Myth vs Fact — the myth, the truth, the takeaway</option>
+          <option value="bias">🧠 The Bias Decoder — mechanism → example → how to spot it</option>
+          <option value="existence">⏳ The Time Question — a philosophical lens on life</option>
+          <option value="lifespan">📚 What Research Says — finding → meaning → caveat</option>
         </select>
       </div>
       <p class="note">Searches NASA, Archive.org and Wikimedia at once, picks the best clips, and drafts a script in your series voice. You review and edit everything before rendering.</p>
@@ -80,6 +84,15 @@
           <button class="ghost sample" data-q="nebula galaxy stars">🌌 Nebulae &amp; galaxies</button>
           <button class="ghost sample" data-q="rocket launch">🚀 Rocket launches</button>
           <button class="ghost sample" data-q="mars rover">🔴 Mars rovers</button>
+        </div>
+        <h2 style="margin-top:18px">Mind &amp; time samples</h2>
+        <p class="note">For the Reality Decoder niche — best with Archive.org / Wikimedia selected.</p>
+        <div class="col">
+          <button class="ghost sample" data-q="advertising psychology">📺 Advertising &amp; persuasion</button>
+          <button class="ghost sample" data-q="earth from space">🌍 Earth from space</button>
+          <button class="ghost sample" data-q="city timelapse">🏙 City time-lapse</button>
+          <button class="ghost sample" data-q="crowd people street">👥 Crowds &amp; people</button>
+          <button class="ghost sample" data-q="hourglass sand time">⏳ Hourglass &amp; clocks</button>
         </div>
         <h2 style="margin-top:18px">Your own files</h2>
         <label class="ghost file-btn">⤒ Upload video<input id="upload-video" type="file" accept="video/*" hidden></label>
@@ -180,7 +193,24 @@
         <input id="meta-title" type="text" placeholder="Video title">
         <textarea id="meta-desc" rows="4" placeholder="Description (attribution is auto-appended)"></textarea>
         <input id="meta-tags" type="text" placeholder="Hashtags, comma separated">
+        <h2 style="margin-top:16px">Sources &amp; further reading</h2>
+        <textarea id="meta-sources" rows="3" placeholder="1–2 research links, one per line (a study, a book, a university page)"></textarea>
+        <p class="note">Appended to the description above the attribution block.</p>
+        <h2 style="margin-top:16px">Policy guard <span class="hint">— evidence-based, not conspiratorial</span></h2>
+        <div id="guard-flags" class="col"></div>
+        <label class="row small chk-manual"><input type="checkbox" id="guard-tone"> Tone is calm and evidence-based — explains mechanisms, never "they are controlling you"</label>
+        <label class="row small chk-manual"><input type="checkbox" id="guard-cited"> Every "studies show" claim names a specific study, or the claim was cut</label>
+        <label class="row small chk-manual"><input type="checkbox" id="guard-noclaim"> No medical, financial, or apocalyptic claims about lifespan</label>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ QUEUE ============ -->
+  <section id="tab-queue" class="panel hidden">
+    <div class="card">
+      <h2>Review queue <span class="hint">— nothing publishes without your approval</span></h2>
+      <p class="note">Every project is a drafted Short. Review the script highlights, sources and guard status, then mark ready and approve. Approved Shorts are ready for manual upload in YouTube Studio.</p>
+      <div id="queue-list" class="col"></div>
     </div>
   </section>
 </main>

@@ -16,7 +16,9 @@ function attributionBlock(clips) {
 }
 function buildMetadata(S) {
   const tags = (S.metaTags || '').split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean);
-  const desc = (S.metaDesc || '').trim() + '\n\n' + attributionBlock(S.clips);
+  const srcs = (S.sources || '').trim();
+  const desc = (S.metaDesc || '').trim() + '\n\n' + attributionBlock(S.clips) +
+    (srcs ? '\n\nSources & further reading:\n' + srcs : '');
   return { title: S.metaTitle || 'Untitled', description: desc.trim(), hashtags: tags.map(t => '#' + t.replace(/\s+/g, '')).join(' ') };
 }
 function buildEditPlan(S) {
@@ -40,7 +42,13 @@ function buildEditPlan(S) {
       'Educational commentary or new insight added — not a re-upload',
       'Title, description and thumbnail are original',
       'Sources attributed in the description',
+      'Calm, evidence-based tone — explains mechanisms, never conspiracies',
     ],
+    sources: (S.sources || '').split('\n').map(s => s.trim()).filter(Boolean),
+    policyGuard: {
+      autoFlags: (typeof scanGuard === 'function' ? scanGuard() : []).map(([l, m]) => l + ': ' + m),
+      manualConfirmations: S.guard || {},
+    },
   };
 }
 

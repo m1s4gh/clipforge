@@ -10,7 +10,8 @@ function defaultState() {
     musicId: null, musicVol: 12,
     ovTitle: '', ovHandle: '', ovTitleOn: true,
     capsBurn: true, capsSrt: true, captionStyle: 'karaoke',
-    metaTitle: '', metaDesc: '', metaTags: '',
+    metaTitle: '', metaDesc: '', metaTags: '', sources: '',
+    guard: { tone: false, cited: false, noclaim: false },
     brand: { name: '', handle: '', color: '#00e5a0', intro: '', outro: '' },
   };
 }
@@ -54,6 +55,8 @@ function save(silent) {
 function loadState() {
   try { const raw = localStorage.getItem(projKey()); S = raw ? Object.assign(defaultState(), JSON.parse(raw)) : defaultState(); }
   catch(e) { S = defaultState(); }
+  S.guard = Object.assign({ tone: false, cited: false, noclaim: false }, S.guard || {});
+  if (typeof S.sources !== 'string') S.sources = '';
 }
 function renderProjBar() {
   const sel = $('#project-sel'); if (!sel) return;
@@ -69,6 +72,7 @@ function renderProjBar() {
 function switchTab(name) {
   $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $$('.panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + name));
+  if (name === 'queue') renderQueue();
 }
 $$('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
 
@@ -335,6 +339,12 @@ function buildScript(tmpl, topic) {
     return 'So what is ' + T + ', really? Here is the simple version. At its core, it is a new way of doing something humans have wanted to do forever. It matters because it changes what is possible, not just what is convenient. And here is the wild part. We are still at the beginning. The version our grandchildren inherit will make today look like a rough draft. That is the pattern of progress. Confusing, then obvious, then invisible. ' + T + ' is on that exact path.';
   if (tmpl === 'myth')
     return 'You have probably heard that ' + T + ' is impossible. That is the myth. Here is the truth. The science does not forbid it. It just demands we be cleverer than we were yesterday. Every impossible in history had an expiration date. Heavier than air flight. Splitting the atom. Standing on the Moon. ' + T + ' is next in line. Not magic. Just physics we have not finished learning yet.';
+  if (tmpl === 'bias')
+    return 'Your brain has a bug, and advertisers know it. It is called ' + T + '. Here is how it works. Your mind takes a shortcut. Instead of weighing all the evidence, it leans on one vivid detail and ignores the rest. You have seen it in action. A product feels trustworthy because one person you like mentioned it, not because you compared anything. Now that you can name it, watch for it. Pause when something feels instantly convincing and ask one question. What am I not being shown? That pause is the whole skill. Calm, curious, and harder to steer.';
+  if (tmpl === 'existence')
+    return 'Here is a question philosophers keep returning to. What does your time actually mean? Think about it this way. ' + T + ' is not about the clock. It is about attention. An hour of real focus can feel longer and richer than a distracted week. Researchers who study how we remember our lives find the same pattern. We judge a life by its vivid moments, not its empty hours. So the practical philosophy is simple. Fill your days with things worth remembering, and time stops slipping through your hands.';
+  if (tmpl === 'lifespan')
+    return 'What does the research actually say about ' + T + '? Here is one finding worth knowing. Studies that follow people for decades keep finding the same thing. The quality of daily habits and relationships predicts how those years feel more than any single number on a chart. But a caveat matters. These are population averages, not personal prescriptions. They describe trends across thousands of lives, not a guarantee for yours. Take the insight, not the anxiety. A meaningful life is built in ordinary days, repeated.';
   return 'For most of human history, ' + T + ' sounded like science fiction. The smartest people who ever lived could not imagine it. Then someone asked a better question, and the answer changed everything. Today, ' + T + ' is real. Built in labs, tested, and getting better every year. But remember this. Every breakthrough starts clumsy and becomes ordinary. Our descendants may find it adorable that we once doubted this. The future is not far. We are just early.';
 }
 
@@ -381,6 +391,7 @@ async function oneClick(topic) {
       });
     });
     if (!S.metaTitle) S.metaTitle = topic.charAt(0).toUpperCase() + topic.slice(1) + ' — explained in 30 seconds';
+    if (!S.metaTags && ['bias', 'existence', 'lifespan'].includes($('#tmpl-sel').value)) S.metaTags = 'shorts, psychology, philosophy';
     save(true); renderTimeline(); renderVoice(); renderChecklist(); syncMetaUI();
     st.textContent = 'Draft ready: ' + picks.length + ' clips + script. Review in the Timeline, then record your voice.';
     toast('Draft built ✓');
@@ -538,19 +549,117 @@ function syncMetaUI() {
 $('#meta-title').addEventListener('input', e => { S.metaTitle = e.target.value; save(true); renderChecklist(); });
 $('#meta-desc').addEventListener('input', e => { S.metaDesc = e.target.value; save(true); });
 $('#meta-tags').addEventListener('input', e => { S.metaTags = e.target.value; save(true); });
+$('#meta-sources').addEventListener('input', e => { S.sources = e.target.value; save(true); renderChecklist(); });
+[['guard-tone', 'tone'], ['guard-cited', 'cited'], ['guard-noclaim', 'noclaim']].forEach(([id, k]) => {
+  $('#' + id).addEventListener('change', e => { S.guard[k] = e.target.checked; save(true); renderChecklist(); });
+});
 
 function renderChecklist() {
+  const g = scanGuard();
+  const gOk = g.every(([lvl]) => lvl !== 'fail');
   const items = [
     ['At least one clip added', S.clips.length > 0],
     ['Every clip has a script (narration)', S.clips.length > 0 && S.clips.every(c => String(c.script || '').trim().length > 10)],
     ['Original voiceover recorded or uploaded on every clip', S.clips.length > 0 && S.clips.every(c => c.audioId)],
     ['Captions generated', S.captions.length > 0],
     ['Title written', (S.metaTitle || '').trim().length > 3],
+    ['Policy guard: no blocking phrasing (see Policy guard)', gOk],
+    ['Policy guard: tone, citations and claims confirmed below', !!S.guard.tone && !!S.guard.cited && !!S.guard.noclaim],
     ['Attribution will be auto-appended to the description', true],
     ['Sources are public-domain or CC (verify licenses!)', S.clips.length > 0],
   ];
   $('#checklist').innerHTML = items.map(([label, ok]) =>
     '<div class="chk ' + (ok ? 'ok' : 'no') + '"><span>' + (ok ? '✓' : '○') + '</span> ' + esc(label) + '</div>').join('');
+  renderGuard();
+}
+
+/* ---------- policy guard: evidence-based, not conspiratorial ---------- */
+function scanGuard() {
+  const text = [S.metaTitle, S.clips.map(c => c.script).join(' ')].join(' ');
+  const flags = [];
+  const has = (re) => re.test(text);
+  if (has(/studies show|research shows|scientists say|researchers found|studies find/i))
+    flags.push(['warn', '"Studies show" without a named study — add a specific source under Sources & further reading, or cut the claim.']);
+  if (has(/secretly control|they are controlling|they control you|they control us|illuminati|deep state|cabal|new world order|sheeple/i))
+    flags.push(['fail', 'Conspiratorial framing detected — rewrite to explain the mechanism, not a hidden controller.']);
+  if (has(/will (make|help) you live longer|reverse aging|cure for|miracle (cure|treatment)|get rich|financial advice|guaranteed returns|live to 120/i))
+    flags.push(['fail', 'Medical or financial claim detected — cut it, or replace with sourced, qualified language.']);
+  if (has(/end of the world|end of humanity|collapse of civilization|apocalypse|doomsday/i))
+    flags.push(['fail', 'Apocalyptic claim detected — cut it.']);
+  return flags;
+}
+function renderGuard() {
+  const box = $('#guard-flags'); if (!box) return;
+  const flags = scanGuard();
+  if (!flags.length)
+    box.innerHTML = '<div class="chk ok"><span>✓</span> No risky phrasing detected in scripts or title.</div>';
+  else
+    box.innerHTML = flags.map(([lvl, msg]) =>
+      '<div class="chk ' + (lvl === 'fail' ? 'no' : 'warn') + '"><span>' + (lvl === 'fail' ? '✕' : '!') + '</span> ' + esc(msg) + '</div>').join('');
+}
+function syncGuardUI() {
+  if ($('#meta-sources')) $('#meta-sources').value = S.sources || '';
+  if ($('#guard-tone')) $('#guard-tone').checked = !!S.guard.tone;
+  if ($('#guard-cited')) $('#guard-cited').checked = !!S.guard.cited;
+  if ($('#guard-noclaim')) $('#guard-noclaim').checked = !!S.guard.noclaim;
+}
+
+/* ---------- review queue ---------- */
+function projectStatus(id) { return (projects.list[id] && projects.list[id].status) || 'draft'; }
+function setProjectStatus(id, st) {
+  projects.list[id].status = st; projects.list[id].updated = Date.now();
+  persistProjects(); renderQueue();
+}
+function guardSummary(st) {
+  const clips = st.clips || [];
+  const text = [(st.metaTitle || ''), clips.map(c => c.script).join(' ')].join(' ');
+  const fails = [];
+  if (/secretly control|they are controlling|they control you|they control us|illuminati|deep state|cabal|new world order|sheeple/i.test(text)) fails.push('conspiracy framing');
+  if (/will (make|help) you live longer|reverse aging|cure for|miracle (cure|treatment)|get rich|financial advice|guaranteed returns|live to 120/i.test(text)) fails.push('medical/financial claim');
+  if (/end of the world|end of humanity|collapse of civilization|apocalypse|doomsday/i.test(text)) fails.push('apocalyptic claim');
+  return fails;
+}
+function renderQueue() {
+  const box = $('#queue-list'); if (!box) return; box.innerHTML = '';
+  const ids = Object.keys(projects.list || {}).sort((a, b) => (projects.list[b].updated || 0) - (projects.list[a].updated || 0));
+  if (!ids.length) { box.innerHTML = '<p class="note">No projects yet — create one from the project bar.</p>'; return; }
+  ids.forEach(id => {
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem('clipforge_project_' + id)); } catch (e) {}
+    st = st || { clips: [] };
+    const clips = st.clips || [];
+    const status = projectStatus(id);
+    const pillCls = status === 'approved' ? 'pill ok' : status === 'ready' ? 'pill warn' : 'pill';
+    const el = document.createElement('div');
+    el.className = 'tclip';
+    const highlights = clips.length
+      ? clips.map((c, i) => '<div class="qclip"><b>#' + (i + 1) + ' script highlight</b><br>' +
+          esc(String(c.script || '(no script)').slice(0, 140)) + (String(c.script || '').length > 140 ? '…' : '') +
+          '<span class="hint">' + esc(c.title || '') + ' · ' + esc(c.source || '') + ' · ' + esc(c.license || '') +
+          (c.audioId ? ' · 🎙 voiceover' : ' · ⚠ no voiceover') + '</span></div>').join('')
+      : '<p class="note">No clips yet.</p>';
+    const fails = guardSummary(st);
+    const srcs = (st.sources || '').trim();
+    el.innerHTML =
+      '<div class="tclip-head"><b>' + esc(projects.list[id].name) + '</b>' +
+      '<span class="' + pillCls + '">' + status.toUpperCase() + '</span>' +
+      (fails.length ? '<span class="pill" style="color:var(--bad);border-color:#5a2430">GUARD: ' + esc(fails.join(', ')) + '</span>' : '') +
+      '<span class="spacer"></span>' +
+      (id !== projects.active ? '<button class="ghost small" data-a="open">Open</button>' : '<span class="hint">currently open</span>') +
+      (status === 'draft' ? '<button class="primary small" data-a="ready">Mark ready</button>' : '') +
+      (status === 'ready' ? '<button class="primary small" data-a="approve">Approve ✓</button><button class="ghost small" data-a="draft">Back to draft</button>' : '') +
+      (status === 'approved' ? '<button class="ghost small" data-a="draft">Un-approve</button>' : '') +
+      '</div>' +
+      '<div class="hint">Title: ' + esc(st.metaTitle || '(untitled)') + '</div>' + highlights +
+      (srcs ? '<div class="hint" style="margin-top:6px">Sources: ' + esc(srcs.split(/\n/).filter(Boolean).slice(0, 2).join(' · ')) + '</div>'
+            : '<div class="hint" style="margin-top:6px">⚠ No sources listed</div>');
+    el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      const a = b.dataset.a;
+      if (a === 'open') switchProject(id);
+      else setProjectStatus(id, a === 'approve' ? 'approved' : a === 'ready' ? 'ready' : 'draft');
+    }));
+    box.appendChild(el);
+  });
 }
 
 /* ---------- footer / projects ---------- */
@@ -575,7 +684,7 @@ function newProject() {
   if (!name) return;
   save(true);
   const id = 'p' + Date.now().toString(36);
-  projects.list[id] = { name, updated: Date.now() };
+  projects.list[id] = { name, updated: Date.now(), status: 'draft' };
   projects.active = id; persistProjects();
   S = defaultState(); syncUI(); renderAll(); renderProjBar();
   toast('New project ✓');
@@ -652,11 +761,11 @@ function syncUI() {
   $('#caps-srt').checked = !!S.capsSrt;
   $('#music-vol').value = S.musicVol; $('#music-vol-v').textContent = S.musicVol + '%';
   $('#ov-title-on').checked = !!S.ovTitleOn;
-  syncMetaUI(); syncBrandUI();
+  syncMetaUI(); syncBrandUI(); syncGuardUI();
   if (S.musicId) idbGet('media', S.musicId).then(b => { if (b) $('#music-name').textContent = 'Music attached ✓ (' + (b.size/1048576).toFixed(1) + ' MB)'; });
   else $('#music-name').textContent = 'No music selected.';
 }
-function renderAll() { renderTimeline(); renderVoice(); renderCaps(); renderChecklist(); }
+function renderAll() { renderTimeline(); renderVoice(); renderCaps(); renderChecklist(); renderQueue(); }
 loadProjects();
 loadState();
 syncUI();

@@ -23,11 +23,34 @@
     <button class="tab" data-tab="style">4 · Captions &amp; Style</button>
     <button class="tab" data-tab="render">5 · Render &amp; Export</button>
   </nav>
+  <div id="proj-bar">
+    <select id="project-sel" title="Project"></select>
+    <button id="proj-new" class="ghost small">+ New</button>
+    <button id="proj-export" class="ghost small">Export</button>
+    <label class="ghost small file-btn">Import<input id="proj-import" type="file" accept="application/json" hidden></label>
+  </div>
 </header>
 
 <main>
   <!-- ============ FOOTAGE ============ -->
   <section id="tab-footage" class="panel">
+    <div class="card oneclick">
+      <h2>⚡ One-Click Short <span class="hint">— topic in, draft video out</span></h2>
+      <div class="row">
+        <input id="oc-topic" type="text" placeholder="e.g. quantum teleportation, fusion energy, Europa…">
+        <button id="oc-build" class="primary">Build draft</button>
+      </div>
+      <div class="row">
+        <label class="small">Script style</label>
+        <select id="tmpl-sel">
+          <option value="distance">The Distance Arc — past → present → future</option>
+          <option value="explain">Explainer — what → why it matters → what's next</option>
+          <option value="myth">Myth vs Fact — the myth, the truth, the takeaway</option>
+        </select>
+      </div>
+      <p class="note">Searches NASA, Archive.org and Wikimedia at once, picks the best clips, and drafts a script in your series voice. You review and edit everything before rendering.</p>
+      <div id="oc-status" class="note"></div>
+    </div>
     <div class="row wrap">
       <div class="card grow">
         <h2>Find reusable footage <span class="hint">— no API key needed</span></h2>
@@ -69,7 +92,7 @@
   <section id="tab-timeline" class="panel hidden">
     <div class="card">
       <h2>Timeline <span class="hint" id="tl-total"></span></h2>
-      <p class="note">Trim each clip to 15–60s for Shorts. Use the preview player, then <b>Set In</b> / <b>Set Out</b> at the playhead.</p>
+      <p class="note">Trim each clip to 15–60s for Shorts. Use the preview player, then <b>Set In</b> / <b>Set Out</b> at the playhead. Word counts show an estimated voiceover length (~150 wpm).</p>
       <div id="timeline" class="col"></div>
       <div id="tl-empty" class="empty">No clips yet — add footage from the <b>Footage</b> tab.</div>
     </div>
@@ -80,6 +103,7 @@
     <div class="card">
       <h2>Voiceover <span class="hint">— original narration is what makes this monetizable</span></h2>
       <p class="note">Record your own voice per clip (recommended — YouTube rewards human narration), or upload an audio file. The script you write here also drives the auto-captions.</p>
+      <label class="row small" style="margin-bottom:10px"><input type="checkbox" id="tele-autoscroll" checked> Teleprompter auto-scroll while recording</label>
       <div id="voice-list" class="col"></div>
       <div id="voice-empty" class="empty">Add clips first.</div>
     </div>
@@ -95,6 +119,10 @@
           <label class="radio"><input type="radio" name="format" value="wide"> Long-form 16:9 <span class="hint">1920×1080</span></label>
         </div>
         <h2>Captions</h2>
+        <div class="row wrap">
+          <label class="radio"><input type="radio" name="capstyle" value="karaoke" checked> Karaoke <span class="hint">word-by-word highlight</span></label>
+          <label class="radio"><input type="radio" name="capstyle" value="classic"> Classic <span class="hint">clean bottom captions</span></label>
+        </div>
         <div class="row">
           <button id="caps-gen" class="primary">Auto-generate from scripts</button>
           <label class="row small"><input type="checkbox" id="caps-burn" checked> Burn into video</label>
@@ -108,6 +136,13 @@
         <div id="music-name" class="note">No music selected.</div>
         <label class="row small">Volume <input id="music-vol" type="range" min="2" max="30" value="12"> <span id="music-vol-v">12%</span></label>
         <p class="note">Get free tracks: YouTube Studio → Audio Library, incompetech.com (CC-BY), freepd.com (CC0).</p>
+        <h2 style="margin-top:16px">Channel preset</h2>
+        <input id="brand-name" type="text" placeholder="Channel name (intro/outro cards)">
+        <input id="brand-handle" type="text" placeholder="@handle (watermark)">
+        <label class="row small">Brand color <input id="brand-color" type="color" value="#00e5a0"></label>
+        <input id="brand-intro" type="text" placeholder="Intro card text — 2.5s (optional)">
+        <input id="brand-outro" type="text" placeholder="Outro card text — 2.5s (optional)">
+        <p class="note">Applied to every render: caption highlight color, intro/outro cards, watermark.</p>
         <h2 style="margin-top:16px">Text overlays</h2>
         <input id="ov-title" type="text" placeholder="Opening title (shows first 4s)">
         <input id="ov-handle" type="text" placeholder="@yourchannel (watermark)">
@@ -150,8 +185,9 @@
   </section>
 </main>
 
+<div id="toast" class="hidden"></div>
 <footer>
-  <span>ClipForge Studio v1 · static app · your files never leave this browser</span>
+  <span>ClipForge Studio v2 · static app · your files never leave this browser</span>
   <span class="right">
     <button id="save-btn" class="ghost small">Save project</button>
     <button id="reset-btn" class="ghost small danger">Reset</button>
